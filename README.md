@@ -1,60 +1,84 @@
-# QR Kod Sistemi (Rust + MySQL)
+# GitHub'a Yükleme ve Başka Bilgisayara Kurulum
 
-Veritabanındaki bir **kod**u QR'a çevirir; kamerası olan **her cihazdan**
-(telefon / PC / tablet) tarayıp veritabanından sorgulamayı sağlayan tek bir web uygulaması.
+## 1. GitHub'a Yükleme (Bir Kez)
 
-## Mimari (özet)
+### Repo oluştur
+1. https://github.com/new adresine git.
+2. Repository name: `qr-system`
+3. **Private** seç (önerilen — veritabanı şema bilgileri var).
+4. **"Add a README"** kutusunu işaretleme (zaten kendi README'miz var).
+5. **Create repository** tıkla.
 
+### Yerel klasörü repoya bağla ve at
+```bash
+cd /home/ahmet/okulproje        # mevcut proje klasörün
+
+git init
+git add .
+git commit -m "ilk commit"
+
+# GitHub'ın gösterdiği URL'i kullan (aşağıdaki örnek):
+git remote add origin https://github.com/KULLANICI_ADIN/qr-system.git
+git branch -M main
+git push -u origin main
 ```
-[ MySQL: codes tablosu ]  <-->  [ Rust / Axum sunucu ]  <-->  [ Web sayfası (her tarayıcı) ]
-                                       |  GET  /qr/:code      -> kodu QR (SVG) görseli yapar
-                                       |  GET  /api/lookup/:code -> taranan kodu DB'de arar
-                                       |  POST /api/codes      -> yeni kod ekler
-                                       |  GET  /               -> web arayüzü
+
+> `.env` ve `certs/` klasörü `.gitignore`'da olduğu için repoya **gitmez**.
+> Şifreler ve sertifikalar güvende kalır.
+
+---
+
+## 2. Başka Bir Bilgisayara Kurulum (Sıfırdan)
+
+```bash
+# 1. Projeyi çek
+git clone https://github.com/KULLANICI_ADIN/qr-system.git
+cd qr-system
+
+# 2. Kurulum scriptini çalıştır — gerisini o halleder
+bash setup.sh
 ```
 
-- **Kamera ile tarama** tamamen tarayıcıda olur (`html5-qrcode`). Bu yüzden
-  telefon, PC, tablet ayrımı yoktur; kamerası + tarayıcısı olan her cihaz çalışır.
-- Tarayıcı kod okur -> sunucuya gönderir -> sunucu veritabanından eşleşeni döner.
+`setup.sh` otomatik olarak şunları yapar:
+- Rust yoksa kurar (`rustup`)
+- Eksik sistem paketlerini kurar (`mkcert`, `nss`, `libssl-dev` vb.)
+- MariaDB servisini başlatır
+- Seni soru soru veritabanı/admin/BASE_URL için yönlendirir
+- `.env` oluşturur
+- Veritabanı + kullanıcı oluşturur (`sudo mysql` ile)
+- TLS sertifikasını üretir (`certs/cert.pem`, `certs/key.pem`)
+- Projeyi derler (`cargo build --release`)
+- İsteğe bağlı: systemd servisi kurar (açılışta otomatik başlasın)
 
-## Kurulum
+### Kurulum sonrası manuel çalıştırmak için
+```bash
+cd qr-system
+export $(cat .env | xargs)
+./target/release/qr-system
+# veya: cargo run --release
+```
 
-1. **Rust** kurulu olsun (https://rustup.rs).
-2. **MySQL** çalışıyor olsun. Veritabanını kur:
-   ```bash
-   mysql -u root -p < schema.sql
-   ```
-3. Bağlantı dizesini ortam değişkenine ver:
-   ```bash
-   export DATABASE_URL="mysql://root:SIFREN@localhost:3306/qrdb"
-   ```
-   (Windows PowerShell: `$env:DATABASE_URL="mysql://root:SIFREN@localhost:3306/qrdb"`)
-4. Çalıştır:
-   ```bash
-   cargo run
-   ```
-5. Tarayıcıdan aç: **http://localhost:3000**
+---
 
-## Kullanım
+## 3. Güncelleme (Yeni Kod Gelince)
 
-- **Kod Ekle** sekmesi: veritabanına yeni bir kod + içerik kaydet.
-- **QR Göster** sekmesi: bir kodun QR görselini üret (yazdır/paylaş).
-- **Tara** sekmesi: kamerayla QR oku; kod veritabanında aranır, içeriği gösterilir.
+```bash
+cd qr-system
+git pull
+cargo build --release
 
-> Not: Tarayıcılar kamerayı yalnızca **HTTPS** veya **localhost** üzerinde açar.
-> Başka cihazlardan (telefon) test ederken sunucuyu HTTPS arkasına alman gerekir
-> (örn. Caddy / nginx ters proxy ile, ya da `mkcert` ile yerel sertifika).
+# systemd servisi varsa yeniden başlat:
+sudo systemctl restart qr-system
+```
 
-## MSSQL kullanmak istersen
+---
 
-`sqlx` (bu projedeki sürücü) **MSSQL desteklemez**. MSSQL için Rust'ta
-[`tiberius`](https://crates.io/crates/tiberius) sürücüsü kullanılır. O durumda
-`Cargo.toml`'daki `sqlx` satırını çıkarıp `tiberius` + `tokio-util` eklemen ve
-`main.rs` içindeki sorguları tiberius API'siyle yazman gerekir. Sorgu mantığı aynı,
-sadece bağlantı/sorgu çağrıları değişir. İstersen MSSQL sürümünü de hazırlayabilirim.
+## 4. Notlar
 
-## Üretim için sonraki adımlar
-- Kimlik doğrulama (kod ekleme/silme yetkisi).
-- Kod oluştururken benzersiz/şifreli token üretimi (tahmin edilemesin diye).
-- HTTPS (mutlaka, mobil kamera için şart).
-- Rate-limit ve loglama.
+| Konu | Detay |
+|------|-------|
+| `.env` | Repoda yok, her makinede ayrı oluşturulur (`setup.sh` yapar) |
+| `certs/` | Repoda yok, her makinede `mkcert` ile üretilir (`setup.sh` yapar) |
+| `target/` | Repoda yok, `cargo build` ile derlenir |
+| Veritabanı şeması | `setup.sh` çalıştırılınca uygulama açılışta tabloları otomatik oluşturur |
+| Şifre sıfırlama | `DELETE FROM sessions; DELETE FROM users;` → yeniden başlat → yeni admin seed'lenir |
