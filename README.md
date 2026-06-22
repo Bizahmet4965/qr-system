@@ -2,7 +2,7 @@
 
 ```bash
 # 1. Projeyi çek
-git clone https://github.com/KULLANICI_ADIN/qr-system.git
+git clone https://github.com/Bizahmet4965/qr-system.git
 cd qr-system
 
 # 2. Kurulum scriptini çalıştır — gerisini o halleder
