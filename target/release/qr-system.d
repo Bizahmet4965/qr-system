@@ -1,0 +1,1 @@
+/home/ahmet/okulproje/target/release/qr-system: /home/ahmet/okulproje/src/main.rs /home/ahmet/okulproje/static/admin.html /home/ahmet/okulproje/static/change-password.html /home/ahmet/okulproje/static/detail.html /home/ahmet/okulproje/static/login.html /home/ahmet/okulproje/static/scan.html

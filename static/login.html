@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giriş — QR Sistemi</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#38bdf8;--txt:#e2e8f0;--mut:#94a3b8;}
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--txt);
+    display:flex;min-height:100vh;align-items:center;justify-content:center}
+  .card{background:var(--card);padding:28px;border-radius:16px;width:320px}
+  h1{font-size:1.3rem;margin:0 0 18px}
+  label{font-size:.85rem;color:var(--mut)}
+  input{width:100%;padding:11px;border-radius:9px;border:1px solid #334155;background:#0b1220;color:var(--txt);margin:6px 0 12px;font-size:1rem}
+  button{width:100%;padding:12px;border:none;border-radius:9px;background:var(--acc);color:#04212e;font-weight:600;font-size:1rem;cursor:pointer}
+  .err{color:#f87171;font-size:.9rem;min-height:1.2em;margin-top:10px}
+</style></head><body>
+<div class="card">
+  <h1>Giriş</h1>
+  <label>Kullanıcı adı</label>
+  <input id="u" autocomplete="username">
+  <label>Şifre</label>
+  <input id="p" type="password" autocomplete="current-password">
+  <button onclick="login()">Giriş yap</button>
+  <div class="err" id="err"></div>
+</div>
+<script>
+async function login(){
+  const err=document.getElementById('err'); err.textContent='';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:document.getElementById('u').value,password:document.getElementById('p').value})});
+    if(r.ok){
+      const d=await r.json();
+      location.href = d.must_change ? '/change-password' : '/';
+    } else { err.textContent='Kullanıcı adı veya şifre hatalı'; }
+  }catch(e){ err.textContent='Hata: '+e; }
+}
+document.getElementById('p').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+</script>
+</body></html>

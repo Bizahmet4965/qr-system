@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="tr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yönetim — QR Sistemi</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#38bdf8;--txt:#e2e8f0;--mut:#94a3b8;}
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+  .wrap{max-width:860px;margin:0 auto;padding:16px}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  h1{font-size:1.3rem;margin:0;flex:1}
+  .lnk{color:var(--acc);text-decoration:none;font-size:.9rem;cursor:pointer;background:none;border:none}
+  .btn{padding:8px 12px;border:none;border-radius:8px;background:var(--acc);color:#04212e;font-weight:600;cursor:pointer}
+  .btn.sec{background:#334155;color:var(--txt)} .btn.danger{background:#ef4444;color:#fff}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{flex:1;padding:10px;text-align:center;background:var(--card);border-radius:10px;cursor:pointer;color:var(--mut);border:none;font-size:.95rem}
+  .tab.active{background:var(--acc);color:#04212e;font-weight:600}
+  .card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:16px}
+  label{font-size:.8rem;color:var(--mut)}
+  input,select{width:100%;padding:10px;border-radius:9px;border:1px solid #334155;background:#0b1220;color:var(--txt);margin:5px 0 10px;font-size:1rem}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #334155;vertical-align:top;word-break:break-all}
+  th{color:var(--mut);font-weight:500}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .mini{padding:5px 9px;font-size:.8rem;border-radius:7px;border:none;cursor:pointer}
+  #qrBox{text-align:center}
+  #qrBox img{background:#fff;border-radius:10px;padding:8px;max-width:260px;width:100%;margin-top:8px}
+  .badge{font-size:.72rem;padding:2px 7px;border-radius:20px;background:#7c2d12;color:#fed7aa}
+  .badge.adm{background:#1e3a8a;color:#bfdbfe}
+  .hidden{display:none}
+  .msg{font-size:.85rem;color:#f87171;min-height:1.1em}
+  .field-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;background:#0b1220;border-radius:8px;margin-bottom:6px}
+  .field-row .ft{font-size:.75rem;color:var(--mut)}
+  .field-row img{height:40px;border-radius:6px;background:#fff}
+  .inline{display:flex;gap:8px;align-items:center;margin:6px 0}
+  .inline label{margin:0}
+</style></head><body>
+<div class="wrap">
+  <header>
+    <h1>Yönetim</h1>
+    <span id="who" style="color:var(--mut);font-size:.85rem"></span>
+    <a class="lnk" href="/scan" target="_blank">Tarama ↗</a>
+    <button class="lnk" onclick="location.href='/change-password'">Şifremi değiştir</button>
+    <button class="btn sec" onclick="logout()">Çıkış</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-t="codes">Kodlar</button>
+    <button class="tab hidden" id="usersTab" data-t="users">Kullanıcılar</button>
+  </div>
+
+  <!-- ===== KODLAR ===== -->
+  <div id="tab-codes">
+    <div class="card">
+      <strong id="formTitle">Yeni kod ekle</strong>
+      <input type="hidden" id="editId">
+      <label>Kod (benzersiz)</label>
+      <input id="fCode" placeholder="örn: ABC123">
+      <label>Açıklama (boş bırakılabilir / link yazarsan tarayınca oraya gider)</label>
+      <input id="fPayload" placeholder="örn: https://site.com/1">
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="saveCode()">Kaydet</button>
+        <button class="btn sec hidden" id="cancelBtn" onclick="resetForm()">İptal / Yeni</button>
+      </div>
+      <div class="msg" id="formMsg"></div>
+
+      <!-- Alanlar (sadece kayıtlı kodda) -->
+      <div id="fieldsWrap" class="hidden" style="margin-top:16px;border-top:1px solid #334155;padding-top:12px">
+        <strong>Alanlar</strong>
+        <p style="color:var(--mut);font-size:.8rem;margin:4px 0">Başlık + tip seçerek detay ekle (metin / sayı / fotoğraf).</p>
+        <div id="fieldList"></div>
+        <div class="inline">
+          <input id="afTitle" placeholder="Başlık (örn: Renk)" style="flex:2">
+          <select id="afType" style="flex:1" onchange="toggleFieldInput()">
+            <option value="text">metin</option>
+            <option value="number">sayı</option>
+            <option value="image">fotoğraf</option>
+          </select>
+        </div>
+        <input id="afValue" placeholder="İçerik">
+        <input id="afFile" type="file" accept="image/jpeg,image/png,image/webp" class="hidden">
+        <button class="btn" onclick="addField()">+ Alan ekle</button>
+        <div class="msg" id="afMsg"></div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="qrBox">
+      <strong id="qrTitle"></strong><br>
+      <img id="qrImg" alt="QR">
+      <div><button class="btn sec" style="margin-top:10px" onclick="window.print()">Yazdır</button></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr><th>ID</th><th>Kod</th><th>Açıklama</th><th>İşlem</th></tr></thead>
+        <tbody id="codeRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== KULLANICILAR (sadece admin) ===== -->
+  <div id="tab-users" class="hidden">
+    <div class="card">
+      <strong>Yeni kullanıcı ekle</strong>
+      <p style="color:var(--mut);font-size:.82rem;margin:6px 0">Geçici şifre verilir; kullanıcı ilk girişte kendi şifresini belirler.</p>
+      <label>Kullanıcı adı</label>
+      <input id="nuUser" placeholder="örn: ahmet">
+      <label>Geçici şifre</label>
+      <input id="nuPass" placeholder="en az 4 karakter">
+      <div class="inline"><input type="checkbox" id="nuAdmin" style="width:auto;margin:0"><label for="nuAdmin">Yönetici yetkisi ver</label></div>
+      <button class="btn" onclick="addUser()">Ekle</button>
+      <div class="msg" id="userMsg"></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>ID</th><th>Kullanıcı</th><th>Rol / Durum</th><th>İşlem</th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let ME = {is_admin:false, username:''};
+function check(r){ if(r.status===401){ location.href='/login'; throw new Error('401'); } return r; }
+function esc(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function init(){
+  try{ ME = await (await fetch('/api/me').then(check)).json(); }catch(e){ return; }
+  document.getElementById('who').textContent = ME.username + (ME.is_admin?' (yönetici)':'');
+  if(ME.is_admin) document.getElementById('usersTab').classList.remove('hidden');
+  loadCodes();
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('tab-codes').classList.toggle('hidden', t.dataset.t!=='codes');
+  document.getElementById('tab-users').classList.toggle('hidden', t.dataset.t!=='users');
+  if(t.dataset.t==='users') loadUsers(); else loadCodes();
+});
+
+// ---- KODLAR ----
+async function loadCodes(){
+  const data = await (await fetch('/api/codes').then(check)).json();
+  const tb=document.getElementById('codeRows'); tb.innerHTML='';
+  if(!data.length){ tb.innerHTML='<tr><td colspan="4" style="color:#94a3b8">Henüz kod yok.</td></tr>'; return; }
+  for(const c of data){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${c.id}</td><td>${esc(c.code)}</td><td>${esc(c.payload||'')}</td>`;
+    const td=document.createElement('td');
+    td.innerHTML=`<div class="row-actions">
+      <button class="mini btn" onclick='showQr(${JSON.stringify(c.code)})'>QR</button>
+      <button class="mini btn sec" onclick='editRow(${c.id},${JSON.stringify(c.code)},${JSON.stringify(c.payload||"")})'>Düzenle</button>
+      <button class="mini btn danger" onclick='delCode(${c.id})'>Sil</button></div>`;
+    tr.appendChild(td); tb.appendChild(tr);
+  }
+}
+async function saveCode(){
+  const id=document.getElementById('editId').value;
+  const code=document.getElementById('fCode').value.trim();
+  const payload=document.getElementById('fPayload').value.trim()||null;
+  const msg=document.getElementById('formMsg'); msg.textContent='';
+  if(!code){ msg.textContent='Kod boş olamaz'; return; }
+  const r=await fetch(id?'/api/codes/'+id:'/api/codes',{method:id?'PUT':'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({code,payload})}).then(check);
+  if(r.ok){
+    const d = await r.json();
+    const newId = id || d.id;
+    enterEdit(newId, code, payload||''); // kaydedince düzenleme moduna geç (alan eklenebilsin)
+    loadCodes();
+  } else { msg.textContent=await r.text(); }
+}
+function enterEdit(id,code,payload){
+  document.getElementById('editId').value=id;
+  document.getElementById('fCode').value=code;
+  document.getElementById('fPayload').value=payload;
+  document.getElementById('formTitle').textContent='Kodu düzenle (#'+id+')';
+  document.getElementById('cancelBtn').classList.remove('hidden');
+  document.getElementById('fieldsWrap').classList.remove('hidden');
+  loadFields(id);
+}
+function editRow(id,code,payload){ enterEdit(id,code,payload); window.scrollTo({top:0,behavior:'smooth'}); }
+function resetForm(){
+  document.getElementById('editId').value='';
+  document.getElementById('fCode').value='';
+  document.getElementById('fPayload').value='';
+  document.getElementById('formTitle').textContent='Yeni kod ekle';
+  document.getElementById('cancelBtn').classList.add('hidden');
+  document.getElementById('fieldsWrap').classList.add('hidden');
+  document.getElementById('formMsg').textContent='';
+}
+async function delCode(id){
+  if(!confirm('Bu kodu (ve alanlarını) silmek istiyor musun?')) return;
+  const r=await fetch('/api/codes/'+id,{method:'DELETE'}).then(check);
+  if(r.ok){ if(document.getElementById('editId').value==id) resetForm(); loadCodes(); }
+}
+function showQr(code){
+  document.getElementById('qrBox').classList.remove('hidden');
+  document.getElementById('qrTitle').textContent='QR: '+code;
+  document.getElementById('qrImg').src='/qr/'+encodeURIComponent(code);
+  document.getElementById('qrBox').scrollIntoView({behavior:'smooth'});
+}
+
+// ---- ALANLAR ----
+function toggleFieldInput(){
+  const t=document.getElementById('afType').value;
+  document.getElementById('afValue').classList.toggle('hidden', t==='image');
+  document.getElementById('afFile').classList.toggle('hidden', t!=='image');
+}
+async function loadFields(codeId){
+  const list=document.getElementById('fieldList');
+  const data = await (await fetch('/api/codes/'+codeId+'/fields').then(check)).json();
+  list.innerHTML='';
+  for(const f of data){
+    const div=document.createElement('div'); div.className='field-row';
+    let inner = `<div><div class="ft">${esc(f.field_type)}</div><b>${esc(f.title)}</b> `;
+    if(f.field_type==='image'){ inner += `<br><img src="${f.image_url}">`; }
+    else { inner += '— '+esc(f.value_text||''); }
+    inner += '</div>';
+    div.innerHTML = inner + `<button class="mini btn danger" onclick="delField(${f.id})">Sil</button>`;
+    list.appendChild(div);
+  }
+}
+async function addField(){
+  const id=document.getElementById('editId').value;
+  const msg=document.getElementById('afMsg'); msg.textContent='';
+  if(!id){ msg.textContent='Önce kodu kaydet'; return; }
+  const title=document.getElementById('afTitle').value.trim();
+  const type=document.getElementById('afType').value;
+  if(!title){ msg.textContent='Başlık gerekli'; return; }
+  const fd=new FormData();
+  fd.append('title',title); fd.append('field_type',type);
+  if(type==='image'){
+    const file=document.getElementById('afFile').files[0];
+    if(!file){ msg.textContent='Dosya seç (jpg/png/webp)'; return; }
+    fd.append('file',file);
+  } else {
+    fd.append('value_text', document.getElementById('afValue').value);
+  }
+  const r=await fetch('/api/codes/'+id+'/fields',{method:'POST',body:fd}).then(check);
+  if(r.ok){
+    document.getElementById('afTitle').value=''; document.getElementById('afValue').value='';
+    document.getElementById('afFile').value=''; loadFields(id);
+  } else { msg.textContent=await r.text(); }
+}
+async function delField(fid){
+  const id=document.getElementById('editId').value;
+  const r=await fetch('/api/fields/'+fid,{method:'DELETE'}).then(check);
+  if(r.ok) loadFields(id);
+}
+
+// ---- KULLANICILAR ----
+async function loadUsers(){
+  const r=await fetch('/api/users').then(check);
+  if(r.status===403){ return; }
+  const data=await r.json();
+  const tb=document.getElementById('userRows'); tb.innerHTML='';
+  for(const u of data){
+    const role = u.is_admin ? '<span class="badge adm">yönetici</span> ' : '';
+    const mc = u.must_change_password ? '<span class="badge">şifre değiştirmeli</span>' : '';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${u.id}</td><td>${esc(u.username)}</td><td>${role}${mc||(u.is_admin?'':'aktif')}</td>`;
+    const td=document.createElement('td');
+    td.innerHTML=`<div class="row-actions">
+      <button class="mini btn sec" onclick='resetPw(${u.id},${JSON.stringify(u.username)})'>Şifre Sıfırla</button>
+      <button class="mini btn danger" onclick='delUser(${u.id})'>Sil</button></div>`;
+    tr.appendChild(td); tb.appendChild(tr);
+  }
+}
+async function addUser(){
+  const username=document.getElementById('nuUser').value.trim();
+  const password=document.getElementById('nuPass').value;
+  const is_admin=document.getElementById('nuAdmin').checked;
+  const msg=document.getElementById('userMsg'); msg.textContent='';
+  if(!username||password.length<4){ msg.textContent='Kullanıcı adı gerekli, şifre en az 4 karakter'; return; }
+  const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username,password,is_admin})}).then(check);
+  if(r.ok){ document.getElementById('nuUser').value=''; document.getElementById('nuPass').value=''; document.getElementById('nuAdmin').checked=false; loadUsers(); }
+  else { msg.textContent=await r.text(); }
+}
+async function resetPw(id,username){
+  const np=prompt('"'+username+'" için yeni geçici şifre (en az 4 karakter):');
+  if(np===null) return;
+  if(np.length<4){ alert('Şifre en az 4 karakter olmalı'); return; }
+  const r=await fetch('/api/users/'+id+'/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:np})}).then(check);
+  if(r.ok){ alert('Şifre sıfırlandı. Kullanıcı ilk girişte yeni şifre belirleyecek.'); loadUsers(); }
+  else { alert(await r.text()); }
+}
+async function delUser(id){
+  if(!confirm('Bu kullanıcıyı silmek istiyor musun?')) return;
+  const r=await fetch('/api/users/'+id,{method:'DELETE'}).then(check);
+  if(r.ok) loadUsers(); else alert(await r.text());
+}
+
+async function logout(){ await fetch('/api/logout',{method:'POST'}); location.href='/login'; }
+init();
+</script>
+</body></html>

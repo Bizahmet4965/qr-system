@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="tr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detay</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#38bdf8;--txt:#e2e8f0;--mut:#94a3b8;}
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+  .wrap{max-width:560px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:14px}
+  h1{font-size:1.4rem;margin:0 0 4px;word-break:break-all}
+  .desc{color:var(--mut);margin:0}
+  .field{margin-top:14px}
+  .ftitle{font-size:.8rem;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+  .fval{font-size:1.05rem;word-break:break-all}
+  .field img{max-width:100%;border-radius:10px;margin-top:6px;background:#fff}
+  .big{text-align:center;color:var(--mut);padding:40px 0}
+  a.btn{display:inline-block;margin-top:10px;padding:10px 14px;background:var(--acc);color:#04212e;border-radius:9px;text-decoration:none;font-weight:600}
+</style></head><body>
+<div class="wrap">
+  <div id="content"><div class="big">Yükleniyor...</div></div>
+</div>
+<script>
+function isUrl(s){ return typeof s==='string' && /^https?:\/\//i.test(s.trim()); }
+function esc(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function run(){
+  // /c/<code> -> <code>
+  const parts = location.pathname.split('/').filter(Boolean);
+  const code = decodeURIComponent(parts[parts.length-1] || '');
+  const box = document.getElementById('content');
+  try{
+    const r = await fetch('/api/lookup/'+encodeURIComponent(code));
+    if(!r.ok){ box.innerHTML='<div class="card"><div class="big">Bu kod bulunamadı:<br><b>'+esc(code)+'</b></div></div>'; return; }
+    const d = await r.json();
+
+    // payload bir link ise direkt yönlendir
+    if(isUrl(d.payload)){ location.replace(d.payload.trim()); return; }
+
+    let html = '<div class="card"><h1>'+esc(d.code)+'</h1>';
+    if(d.payload){ html += '<p class="desc">'+esc(d.payload)+'</p>'; }
+    html += '</div>';
+
+    if(d.fields && d.fields.length){
+      html += '<div class="card">';
+      for(const f of d.fields){
+        html += '<div class="field"><div class="ftitle">'+esc(f.title)+'</div>';
+        if(f.field_type==='image'){
+          html += '<img src="'+f.image_url+'" alt="'+esc(f.title)+'">';
+        } else if(isUrl(f.value_text)){
+          html += '<a class="btn" href="'+esc(f.value_text)+'" target="_blank" rel="noopener">Bağlantıyı aç</a>';
+        } else {
+          html += '<div class="fval">'+esc(f.value_text||'—')+'</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    box.innerHTML = html;
+  }catch(e){ box.innerHTML='<div class="card"><div class="big">Hata: '+esc(e)+'</div></div>'; }
+}
+run();
+</script>
+</body></html>

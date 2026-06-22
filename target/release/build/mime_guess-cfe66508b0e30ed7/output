@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/home/ahmet/okulproje/target/release/build/mime_guess-cfe66508b0e30ed7/out/mime_types_generated.rs
